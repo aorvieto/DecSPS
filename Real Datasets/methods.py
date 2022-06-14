@@ -196,6 +196,89 @@ def AdaNorm(cost,grad,hess,nexp, K_record_times, compute_hess, eta, b0, decr, th
         
     return name, f, eta*gammas_rec
 
+def Adam(cost,grad,hess,nexp, K_record_times, compute_hess, eta, beta2, decr, th, x0, batch_size, n):
+    #number of iterations
+    K = K_record_times[-1]
+    
+    #init
+    f = np.zeros((len(K_record_times),nexp))
+    gammas_rec = np.zeros((len(K_record_times),nexp))
+    
+    ## optimization
+    for e in range(nexp):
+        
+        #batches        
+        batch = []
+        for i in range(K+1): batch.append(random.sample(range(n),batch_size))    
+
+        #iterations
+        i_record = 0
+        x = [x0 for i in range(K+2)]
+        v = [0*x0 for i in range(K+2)]
+        for k in range(K+1):
+            
+            # stepsize selection   
+            if k ==0:
+                v[k] = np.power(grad(x[k],batch[k]), 2)
+            else:
+                v[k] = beta2*v[k-1] + (1-beta2)*np.power(grad(x[k],batch[k]), 2)
+                
+            #record
+            if k==K_record_times[i_record]:
+                gammas_rec[i_record,e] = np.mean(np.power(v[k],-0.5))
+                f[i_record,e] = cost(x[k],range(n))
+                i_record = i_record+1
+                
+            # update
+            x[k+1] = x[k] - eta*np.multiply(np.power(v[k],-0.5),grad(x[k],batch[k]))
+           
+    ## name        
+    name = r'Adam, $\beta$='+"{:.2f}".format(beta2)+', $\eta$='+"{:.5f}".format(eta)
+        
+    return name, f, eta*gammas_rec
+
+def AMSgrad(cost,grad,hess,nexp, K_record_times, compute_hess, eta, beta2, decr, th, x0, batch_size, n):
+    #number of iterations
+    K = K_record_times[-1]
+    
+    #init
+    f = np.zeros((len(K_record_times),nexp))
+    gammas_rec = np.zeros((len(K_record_times),nexp))
+    
+    ## optimization
+    for e in range(nexp):
+        
+        #batches        
+        batch = []
+        for i in range(K+1): batch.append(random.sample(range(n),batch_size))    
+
+        #iterations
+        i_record = 0
+        x = [x0 for i in range(K+2)]
+        v = [0*x0 for i in range(K+2)]
+        for k in range(K+1):
+            
+            # stepsize selection   
+            if k ==0:
+                v[k] = np.power(grad(x[k],batch[k]), 2)
+            else:
+                v_k = beta2*v[k-1] + (1-beta2)*np.power(grad(x[k],batch[k]), 2)
+                v[k] = np.maximum(v_k, v[k-1])
+                
+            #record
+            if k==K_record_times[i_record]:
+                gammas_rec[i_record,e] = eta*np.mean(np.power(v[k],-0.5))/math.sqrt(k-th+1)
+                f[i_record,e] = cost(x[k],range(n))
+                i_record = i_record+1
+                
+            # update
+            x[k+1] = x[k] - eta*np.multiply(np.power(v[k],-0.5),grad(x[k],batch[k]))/math.sqrt(k-th+1)
+           
+    ## name        
+    name = r'AMSgrad, $\beta$='+"{:.2f}".format(beta2)+', $\eta$='+"{:.4f}".format(eta)
+        
+    return name, f, eta*gammas_rec
+
 
 
 
